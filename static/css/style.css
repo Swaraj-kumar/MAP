@@ -1,0 +1,144 @@
+#map-container {
+    width: 100%;
+    height: 80vh;
+    margin: 0 auto;
+}
+
+.back-button, .view-all-button {
+    position: absolute;
+    padding: 8px 16px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+.back-button {
+    top: 20px;
+    left: 20px;
+}
+
+.view-all-button {
+    top: 20px;
+    right: 20px;
+}
+
+.back-button:hover, .view-all-button:hover {
+    background-color: #f0f0f0;
+}
+
+/* Add transition for map areas */
+path.highcharts-point {
+    transition: fill 0.3s ease-in-out, stroke 0.3s ease-in-out;
+}
+
+/* Highlighted district style */
+.highcharts-point-highlighted {
+    fill: #bada55 !important;
+    stroke: #666 !important;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    overflow-y: auto;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 800px;
+    border-radius: 4px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.close {
+    position: absolute;
+    right: 10px;
+    top: 5px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: black;
+}
+
+.plant-details {
+    margin-top: 15px;
+}
+
+.plant-details p {
+    margin: 8px 0;
+    line-height: 1.4;
+}
+
+.district-plants {
+    margin-top: 20px;
+}
+
+.plant-entry {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+}
+
+.plant-entry h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.plant-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.plant-table tr {
+    border-bottom: 1px solid #eee;
+}
+
+.plant-table tr:last-child {
+    border-bottom: none;
+}
+
+.plant-table td {
+    padding: 8px;
+    vertical-align: top;
+}
+
+.plant-table td:first-child {
+    width: 200px;
+    font-weight: bold;
+    color: #666;
+}
+
+hr {
+    margin: 20px 0;
+    border: none;
+    border-top: 1px solid #ddd;
+}
+
+/* Legend styles */
+.highcharts-legend-item {
+    cursor: pointer;
+}
+
+.highcharts-legend-item text {
+    font-weight: bold !important;
+}
