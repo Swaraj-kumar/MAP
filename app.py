@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request, send_from_directory
 import pandas as pd
+import os
 
 
 app = Flask(__name__)
@@ -96,4 +97,5 @@ def serve_geojson(filename):
     return send_from_directory('static/geojson', filename)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Default to port 5000 if PORT is not set
+    app.run(host="0.0.0.0", port=port, debug=True)
