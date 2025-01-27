@@ -13,11 +13,18 @@
 
 <body>
     <div id="map-container" class="map-container"></div>
+    <h1 id="bioMassDetails" style="text-align: center;">Details of Bio Mass as per state</h1>
+
+    <!-- Scrollable List Container for state buttons -->
+    <div id="state-list-container" class="state-list-container">
+        <!-- Buttons will be dynamically added here -->
+    </div>
+
+    <!-- Container to display the biomass details of the selected state -->
+    <div id="biomass-details-container" style="text-align: center; margin-top: 20px;"></div>
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="static/js/main.js"></script>
-    <link rel="stylesheet" href="static/css/style.css">
+
 </body>
 
 </html>
-
-

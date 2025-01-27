@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </tbody>
             </table>
         </div>
-         <p style="text-align: center; font-style: italic; margin-top: 10px;">* unit = 1000 tonnes per annum</p>
+         <p style="text-align: center; font-style: italic; margin-top: 10px;">* unit = 1000 ton/year</p>
     </div>
 `;
 
@@ -292,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
               data: statesWithPlants,
               color: '#FF0000', // Explicitly set red color for all markers
               dataLabels: {
-                  enabled: false,
+                  enabled: true,
                   format: '{point.name}',
                   style: {
                       fontSize: '8px',
