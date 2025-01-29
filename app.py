@@ -26,6 +26,50 @@ def load_plant_data():
         print(f"Error loading plant data: {str(e)}")
         return {}
 
+def load_odisha_biomass_data():
+    try:
+        file_path = 'Odisha_biomass.xlsx'
+        # Read Excel file with multi-level headers
+        df = pd.read_excel(file_path, header=[0, 1])
+        
+        # Get the district column (it's typically in the first column)
+        districts = df.iloc[:, 0]  # Get the first column which contains districts
+        
+        result = []
+        
+        for index, row in df.iterrows():
+            district_data = {
+                'district': districts[index],  # Use the district from our separately extracted column
+                'bioenergy_potential': {
+                    'kharif_rice': float(row[('Bioenergy Potential GJ', 'Kharif Rice')]),
+                    'rabi_rice': float(row[('Bioenergy Potential GJ', 'Rabi Rice')]),
+                    'wheat': float(row[('Bioenergy Potential GJ', 'Wheat')]),
+                    'cotton': float(row[('Bioenergy Potential GJ', 'Cotton')]),
+                    'sugarcane': float(row[('Bioenergy Potential GJ', 'Sugarcane')])
+                },
+                'gross_biomass': {
+                    'kharif_rice': float(row[('Gross Biomass Kilo tonnes', 'Kharif Rice')]),
+                    'rabi_rice': float(row[('Gross Biomass Kilo tonnes', 'Rabi Rice')]),
+                    'wheat': float(row[('Gross Biomass Kilo tonnes', 'Wheat')]),
+                    'cotton': float(row[('Gross Biomass Kilo tonnes', 'Cotton')]),
+                    'sugarcane': float(row[('Gross Biomass Kilo tonnes', 'Sugarcane')])
+                },
+                'surplus_biomass': {
+                    'kharif_rice': float(row[('Surplus Biomass Kilo tonnes', 'Kharif Rice')]),
+                    'rabi_rice': float(row[('Surplus Biomass Kilo tonnes', 'Rabi Rice')]),
+                    'wheat': float(row[('Surplus Biomass Kilo tonnes', 'Wheat')]),
+                    'cotton': float(row[('Surplus Biomass Kilo tonnes', 'Cotton')]),
+                    'sugarcane': float(row[('Surplus Biomass Kilo tonnes', 'Sugarcane')])
+                }
+            }
+            result.append(district_data)
+        
+        return result
+
+    except Exception as e:
+        print(f"Error loading Odisha biomass data: {str(e)}")
+        return []
+
 def load_biomass_data():
     """Load and process the biomass data from the provided Excel file."""
     try:
@@ -57,6 +101,43 @@ def get_plants():
         return jsonify(plants_by_state)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/biomass/odisha')
+def get_odisha_biomass():
+    try:
+        biomass_data = load_odisha_biomass_data()
+        if biomass_data:
+            return jsonify(biomass_data), 200
+        else:
+            return jsonify({'error': 'No data found for Odisha'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/odisha/districts/<district>')
+def get_odisha_district_details(district):
+    try:
+        plants_data = load_plant_data()
+        biomass_data = load_odisha_biomass_data()
+        
+        district = district.strip().lower()
+        
+        # Get plant details
+        plants_in_district = [plant for plant in plants_data.get("Odisha", []) if plant.get("District", "").lower() == district]
+        
+        # Get biomass details
+        biomass_in_district = next((b for b in biomass_data if b["district"].lower() == district), None)
+        
+        # Combine data
+        response = {
+            "district": district.title(),
+            "plants": plants_in_district,
+            "biomass": biomass_in_district
+        }
+        return jsonify(response), 200 if plants_in_district or biomass_in_district else 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/api/plants/<state>')
 def get_plants_by_state(state):
