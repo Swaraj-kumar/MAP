@@ -177,6 +177,11 @@ def get_biomass():
 def serve_geojson(filename):
     return send_from_directory('static/geojson', filename)
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Default to port 5000 if PORT is not set
-    app.run(host="0.0.0.0", port=port, debug=True)
+# if __name__ == '__main__':
+#     port = int(os.environ.get("PORT", 10000))  # Default to port 5000 if PORT is not set
+#     app.run(host="0.0.0.0", port=PORT, debug=False)
+
+PORT = int(os.environ.get("PORT", 10000))  # Use Render's assigned port
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=PORT, debug=False) 
