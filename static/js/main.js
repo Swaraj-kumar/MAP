@@ -443,29 +443,36 @@ document.addEventListener("DOMContentLoaded", () => {
         text: `${stateName} Districts`,
       },
       subtitle: {
-        text: stateName === "Odisha" 
-          ? `All Districts of Odisha` 
-          : `Total Plants: ${plants.length} | Districts with Plants: ${districtsWithPlants.size}`,
-      },
+        text: `Total Plants: ${plants.length} | Districts with Plants: ${districtsWithPlants.size}`,
+    },
+    
       mapNavigation: {
         enabled: true,
       },
       tooltip: {
         formatter: function () {
-          const district = this.point.properties?.district || this.point.district;
-          const districtPlants = plantsByDistrict[district] || [];
-          let tooltipContent = `<b>${district}</b><br>`;
-
-          if (stateName === "Odisha") {
-            tooltipContent += `Click to view district details`;
-          } else {
-            tooltipContent += `Plants: ${districtPlants.length}`;
-            if (districtPlants.length > 0) {
-              tooltipContent += "<br>" + districtPlants.map(p => `• ${p["Sponge Iron Plant"]}`).join("<br>") + "<br>Click to view details";
-            }
+          const district = this.point.properties?.district.trim();
+          console.log("Hovered District:", district);
+          console.log("Available Districts in Data:", Object.keys(plantsByDistrict));
+  
+          // Ensure case-insensitive matching (handles potential variations in district names)
+          const matchedDistrict = Object.keys(plantsByDistrict).find(d => 
+              d.toLowerCase() === district.toLowerCase()
+          );
+  
+          if (!matchedDistrict) {
+              return `<b>${district}</b><br>No plant data available`;
           }
-          return tooltipContent;
-        },
+  
+          const districtPlants = plantsByDistrict[matchedDistrict] || [];
+          const plantList = districtPlants.length > 0 
+              ? '<br>' + districtPlants.map(p => `• ${p['Sponge Iron Plant'] || 'Unknown Plant'}`).join('<br>')
+              : '';
+  
+          return `<b>${matchedDistrict}</b><br>
+                  Plants: ${districtPlants.length}${plantList}
+                  ${districtPlants.length > 0 ? '<br>Click to view details' : ''}`;
+      },
       },
       series: [
         {
@@ -809,28 +816,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function createModal() {
+    // Remove existing modal if any
+    const existingModal = document.getElementById("plantModal");
+    if (existingModal) {
+        existingModal.remove();
+    }
+
     const modal = document.createElement("div");
     modal.id = "plantModal";
     modal.className = "modal";
+    modal.style.zIndex = "9999999"; // Ensure high z-index
+
+    // Create a content wrapper div
+    const contentWrapper = document.createElement("div");
+    contentWrapper.className = "modal-content";
+    contentWrapper.style.zIndex = "10000000"; // Even higher z-index
 
     // Add close button
     const closeBtn = document.createElement("span");
     closeBtn.className = "close";
     closeBtn.innerHTML = "&times;";
-    closeBtn.onclick = () => (modal.style.display = "none");
+    closeBtn.style.zIndex = "10000001"; // Highest z-index
+    closeBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        modal.style.display = "none";
+    };
 
-    modal.appendChild(closeBtn);
+    // Append close button to content wrapper
+    contentWrapper.appendChild(closeBtn);
+    
+    // Append content wrapper to modal
+    modal.appendChild(contentWrapper);
 
     // Closing when clicking outside
-    window.onclick = (event) => {
-      if (event.target === modal) {
-        modal.style.display = "none";
-      }
+    modal.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    };
+
+    // Prevent clicks inside modal from closing it
+    contentWrapper.onclick = (event) => {
+        event.stopPropagation();
     };
 
     document.body.appendChild(modal);
+    
+    // Add fullscreen change event listener
+    document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+            modal.style.zIndex = "9999999";
+            contentWrapper.style.zIndex = "10000000";
+            closeBtn.style.zIndex = "10000001";
+        }
+    });
+
     return modal;
-  }
+}
 
   function createBackButton() {
     const existing = document.querySelector(".back-button");
