@@ -256,122 +256,195 @@ document.addEventListener("DOMContentLoaded", () => {
   
     function createMap(geoJson) {
       if (currentChart) {
-        currentChart.destroy();
+          currentChart.destroy();
       }
-  
+    
       // Aggregate plant data by state
       const statesWithPlants = Object.entries(plantData)
-        .filter(([state, plants]) => plants.length > 0)
-        .map(([state, plants]) => {
-          const stateFeature = geoJson.features.find(
-            (f) => f.properties.st_nm === state
-          );
-          if (stateFeature) {
-            const coordinates = calculateStateCentroid(stateFeature);
-            return coordinates
-              ? {
-                  name: state,
-                  lon: coordinates[0],
-                  lat: coordinates[1],
-                  plantCount: plants.length,
-                  marker: {
-                    radius: 8,
-                    fillColor: "#FF0000",
-                    lineColor: "#fff",
-                    lineWidth: 2,
-                  },
-                }
-              : null;
-          }
-          return null;
-        })
-        .filter((point) => point !== null);
-  
-      currentChart = Highcharts.mapChart("map-container", {
-        chart: {
-          map: geoJson,
-        },
-        title: {
-          text: "India Map",
-        },
-        subtitle: {
-          text: "Hover for plant details, Click to explore districts",
-        },
-        mapNavigation: {
-          enabled: true,
-        },
-        tooltip: {
-          formatter: function () {
-            const state = this.point.name || this.point.properties?.st_nm;
-            const plants = plantData[state] || [];
-            return `
-                      <b>${state}</b><br>
-                      Number of Plants: ${plants.length}`;
-          },
-        },
-        series: [
-          {
-            data: geoJson.features,
-            name: "States",
-            borderColor: "#000",
-            borderWidth: 2,
-            dataLabels: {
-              enabled: true,
-              format: "{point.properties.st_nm}",
-              style: {
-                fontWeight: "bold",
-              },
-            },
-            point: {
-              events: {
-                click: function () {
-                  const stateName = this.properties.st_nm;
-                  const plants = plantData[stateName];
-  
-                  if (!plants || plants.length === 0) {
-                    alert("No plant data available for " + stateName);
-                    return;
+          .filter(([state, plants]) => plants.length > 0)
+          .map(([state, plants]) => {
+              const stateFeature = geoJson.features.find(f => f.properties.st_nm === state);
+              if (stateFeature) {
+                  const coordinates = calculateStateCentroid(stateFeature);
+                  if (coordinates) {
+                      // For Odisha, shift the red dot slightly left
+                      const adjustedCoordinates = state === "Odisha" 
+                          ? [coordinates[0] - 0.5, coordinates[1]]  // Shift left by 0.5 degrees
+                          : coordinates;
+                      
+                      return {
+                          name: state,
+                          lon: adjustedCoordinates[0],
+                          lat: adjustedCoordinates[1],
+                          plantCount: plants.length,
+                          marker: {
+                              radius: 8,
+                              fillColor: "#FF0000",
+                              lineColor: "#fff",
+                              lineWidth: 2,
+                          }
+                      };
                   }
-  
-                  const stateFile = stateName.toLowerCase().replace(/\s+/g, "");
-                  fetch(`/static/geojson/states/${stateFile}.json`)
-                    .then((response) => response.json())
-                    .then((stateData) => {
-                      currentView = stateName;
-                      createStateMap(stateData, plants, stateName);
-                      createBackButton();
-                    })
-                    .catch((error) => {
-                      console.error("Error loading state data:", error);
-                      alert("Error loading map for " + stateName);
-                    });
-                },
-              },
-            },
+              }
+              return null;
+          })
+          .filter(point => point !== null);
+    
+      // Calculate Odisha centroid for biomass marking with adjusted position
+      const odishaFeature = geoJson.features.find(f => f.properties.st_nm === "Odisha");
+      const odishaCentroid = odishaFeature ? calculateStateCentroid(odishaFeature) : null;
+      const odishaBiomassPoint = odishaCentroid ? [{
+          name: "Odisha",
+          lon: odishaCentroid[0] + 0.5, // Shift right by 0.5 degrees
+          lat: odishaCentroid[1],
+          marker: {
+              radius: 8,
+              fillColor: "#00FF00",
+              lineColor: "#fff",
+              lineWidth: 2,
+          }
+      }] : [];
+    
+      currentChart = Highcharts.mapChart("map-container", {
+          chart: {
+              map: geoJson,
           },
-          {
-            type: "mappoint",
-            name: "States with Plants",
-            data: statesWithPlants,
-            color: "#FF0000", // Explicitly set red color for all markers
-            dataLabels: {
-              enabled: false,
-              format: "{point.name}",
-              style: {
-                fontSize: "8px",
-                textOutline: "1px white",
-              },
-            },
-            tooltip: {
+          title: {
+              text: "India Map",
+          },
+          subtitle: {
+              text: "Hover for plant details, Click to explore districts",
+          },
+          mapNavigation: {
+              enabled: true,
+          },
+          tooltip: {
               formatter: function () {
-                return `<b>${this.point.name}</b><br>
-                                Number of Plants: ${this.point.plantCount}`;
-              },
-            },
+                  const state = this.point.name || this.point.properties?.st_nm;
+                  
+                  // Check series type for custom tooltips
+                  if (this.point.series.name === "States with Biomass") {
+                      return `<b>${state}</b><br>Click here to view biomass details`;
+                  } else if (this.point.series.name === "States with Plants") {
+                      const plants = plantData[state] || [];
+                      return `<b>${state}</b><br>Number of Plants: ${plants.length}`;
+                  } else {
+                      // For the base map series
+                      const plants = plantData[state] || [];
+                      return `<b>${state}</b><br>Number of Plants: ${plants.length}`;
+                  }
+              }
           },
-        ],
+          series: [
+              {
+                  data: geoJson.features,
+                  name: "States",
+                  borderColor: "#000",
+                  borderWidth: 2,
+                  dataLabels: {
+                      enabled: true,
+                      format: "{point.properties.st_nm}",
+                      style: {
+                          fontWeight: "bold",
+                      },
+                  },
+                  point: {
+                      events: {
+                          click: function () {
+                              const stateName = this.properties.st_nm;
+                              const plants = plantData[stateName];
+    
+                              if (!plants || plants.length === 0) {
+                                  alert("No plant data available for " + stateName);
+                                  return;
+                              }
+    
+                              const stateFile = stateName.toLowerCase().replace(/\s+/g, "");
+                              fetch(`/static/geojson/states/${stateFile}.json`)
+                                  .then((response) => response.json())
+                                  .then((stateData) => {
+                                      currentView = stateName;
+                                      createStateMap(stateData, plants, stateName);
+                                      createBackButton();
+                                  })
+                                  .catch((error) => {
+                                      console.error("Error loading state data:", error);
+                                      alert("Error loading map for " + stateName);
+                                  });
+                          }
+                      }
+                  }
+              },
+              {
+                  id: 'plants-series',
+                  type: "mappoint",
+                  name: "States with Plants",
+                  data: statesWithPlants,
+                  color: "#FF0000",
+                  visible: true,
+                  dataLabels: {
+                      enabled: false
+                  }
+              },
+              {
+                  id: 'biomass-series',
+                  type: "mappoint",
+                  name: "States with Biomass",
+                  data: odishaBiomassPoint,
+                  color: "#00FF00",
+                  visible: true, // Always visible now
+                  dataLabels: {
+                      enabled: false
+                  },
+                  point: {
+                      events: {
+                          click: function() {
+                              const state = this.name;
+                              fetch(`/api/biomass?state=${encodeURIComponent(state)}`)
+                                  .then(response => response.json())
+                                  .then(data => {
+                                      if (data.error) {
+                                          alert(data.error);
+                                      } else {
+                                          showStateDetails(state, data);
+                                      }
+                                  })
+                                  .catch(error => console.error("Error fetching biomass data:", error));
+                          }
+                      }
+                  }
+              }
+          ]
       });
+    
+      return currentChart;
     }
+  
+  
+  function toggleBiomassView() {
+      if (currentChart) {
+          const plantsSeries = currentChart.get('plants-series');
+          const biomassSeries = currentChart.get('biomass-series');
+          
+          if (biomassSeries.visible) {
+              // Switch to plants view
+              plantsSeries.setVisible(true);
+              biomassSeries.setVisible(false);
+          } else {
+              // Switch to biomass view
+              plantsSeries.setVisible(false);
+              biomassSeries.setVisible(true);
+          }
+      }
+  }
+  
+  // Update the existing highlightStatesWithPlants function to handle both plants and biomass
+  function highlightStatesWithPlants() {
+      if (currentChart) {
+          const plantsSeries = currentChart.get('plants-series');
+          plantsSeries.setVisible(!plantsSeries.visible);
+      }
+  }
   
     function createStateMap(stateData, plants, stateName) {
       const bioMassDetailsHeader = document.getElementById("bioMassDetails");
@@ -384,6 +457,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
   
       toggleBiomassContainer(false);
+      
       // Grouping plants by district
       const plantsByDistrict = {};
       plants.forEach((plant) => {
@@ -402,6 +476,13 @@ document.addEventListener("DOMContentLoaded", () => {
           const sumLon = coordinates.reduce((sum, coord) => sum + coord[0], 0);
           const sumLat = coordinates.reduce((sum, coord) => sum + coord[1], 0);
           return [sumLon / len, sumLat / len];
+        } else if (districtFeature.geometry.type === "MultiPolygon") {
+          const polygons = districtFeature.geometry.coordinates;
+          const allCoords = polygons.flat(2);
+          const len = allCoords.length;
+          const sumLon = allCoords.reduce((sum, coord) => sum + coord[0], 0);
+          const sumLat = allCoords.reduce((sum, coord) => sum + coord[1], 0);
+          return [sumLon / len, sumLat / len];
         }
         return null;
       }
@@ -409,14 +490,14 @@ document.addEventListener("DOMContentLoaded", () => {
       // Getting districts with plants
       const districtsWithPlants = new Set(Object.keys(plantsByDistrict));
   
-      // Preparing districts data with plant counts
+      // Preparing districts data
       const districtsData = stateData.features.map((feature) => {
         const district = feature.properties.district;
         const districtPlants = plantsByDistrict[district] || [];
         return {
           ...feature,
           value: districtPlants.length,
-          color: districtPlants.length > 0 ? "#bada55" : "#eee",
+          color: "#eee", // Light background for all districts
           plantsData: districtPlants,
           hasPlants: districtPlants.length > 0,
         };
@@ -432,38 +513,43 @@ document.addEventListener("DOMContentLoaded", () => {
           },
         },
         title: {
-          text: `Plants in ${stateName}`,
+          text: `${stateName} Districts`,
         },
         subtitle: {
           text: `Total Plants: ${plants.length} | Districts with Plants: ${districtsWithPlants.size}`,
-        },
+      },
+      
         mapNavigation: {
           enabled: true,
         },
         tooltip: {
           formatter: function () {
-            const district = this.point.properties?.district;
-            const districtPlants = plantsByDistrict[district] || [];
-            let tooltipContent = `<b>${district}</b><br>`;
-  
-            if (stateName === "Odisha") {
-              tooltipContent += `Click to view district details`;
-            } else {
-              tooltipContent += `Plants: ${districtPlants.length}`;
-              if (districtPlants.length > 0) {
-                tooltipContent +=
-                  "<br>" +
-                  districtPlants
-                    .map((p) => `• ${p["Sponge Iron Plant"]}`)
-                    .join("<br>") +
-                  "<br>Click to view details";
-              }
+            const district = this.point.properties?.district.trim();
+            console.log("Hovered District:", district);
+            console.log("Available Districts in Data:", Object.keys(plantsByDistrict));
+    
+            // Ensure case-insensitive matching (handles potential variations in district names)
+            const matchedDistrict = Object.keys(plantsByDistrict).find(d => 
+                d.toLowerCase() === district.toLowerCase()
+            );
+    
+            if (!matchedDistrict) {
+                return `<b>${district}</b><br>No plant data available`;
             }
-            return tooltipContent;
-          },
+    
+            const districtPlants = plantsByDistrict[matchedDistrict] || [];
+            const plantList = districtPlants.length > 0 
+                ? '<br>' + districtPlants.map(p => `• ${p['Sponge Iron Plant'] || 'Unknown Plant'}`).join('<br>')
+                : '';
+    
+            return `<b>${matchedDistrict}</b><br>
+                    Plants: ${districtPlants.length}${plantList}
+                    ${districtPlants.length > 0 ? '<br>Click to view details' : ''}`;
+        },
         },
         series: [
           {
+            // Base district shapes
             name: "Districts",
             data: districtsData,
             borderColor: "#999",
@@ -480,21 +566,13 @@ document.addEventListener("DOMContentLoaded", () => {
               events: {
                 click: function () {
                   const district = this.properties.district;
-                  if (stateName === "Odisha") {
-                    // For Odisha, show details for all districts regardless of plants
-                    showDistrictDetails(
-                      district,
-                      plantsByDistrict[district] || []
-                    );
-                  } else if (this.value > 0) {
-                    // For other states, only show details if plants exist
-                    showDistrictDetails(district, plantsByDistrict[district]);
-                  }
+                  showDistrictDetails(district, plantsByDistrict[district] || []);
                 },
               },
             },
           },
           {
+            // Red dots for districts with plants
             name: "Districts with Plants",
             type: "mappoint",
             color: "#FF0000",
@@ -523,7 +601,36 @@ document.addEventListener("DOMContentLoaded", () => {
               })
               .filter((point) => point !== null),
             dataLabels: {
-              enabled: true,
+              enabled: false
+            }
+          },
+          {
+            // Green dots for all Odisha districts
+            name: "Districts with Biomass",
+            type: "mappoint",
+            color: "#00FF00",
+            data: stateName === "Odisha" ? stateData.features
+              .map((feature) => {
+                const district = feature.properties.district;
+                const centroid = calculateDistrictCentroid(feature);
+                return centroid
+                  ? {
+                      name: district,
+                      lon: centroid[0],
+                      lat: centroid[1],
+                      district: district,
+                      marker: {
+                        radius: 8,
+                        fillColor: "#00FF00",
+                        lineColor: "#fff",
+                        lineWidth: 2,
+                      },
+                    }
+                  : null;
+              })
+              .filter((point) => point !== null) : [],
+            dataLabels: {
+              enabled: false,
               format: "{point.district}",
               style: {
                 fontSize: "8px",
@@ -534,22 +641,14 @@ document.addEventListener("DOMContentLoaded", () => {
               events: {
                 click: function () {
                   const district = this.district;
-                  if (stateName === "Odisha") {
-                    showDistrictDetails(
-                      district,
-                      plantsByDistrict[district] || []
-                    );
-                  } else if (plantsByDistrict[district]?.length > 0) {
-                    showDistrictDetails(district, plantsByDistrict[district]);
-                  }
+                  showDistrictDetails(district, plantsByDistrict[district] || []);
                 },
               },
             },
-          },
+          }
         ],
       });
-    }
-  
+  }
     highlightDistrictsWithPlants();
   
     // Function to show district details with both plant and biomass data
@@ -790,28 +889,63 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   
     function createModal() {
+      // Remove existing modal if any
+      const existingModal = document.getElementById("plantModal");
+      if (existingModal) {
+          existingModal.remove();
+      }
+  
       const modal = document.createElement("div");
       modal.id = "plantModal";
       modal.className = "modal";
+      modal.style.zIndex = "9999999"; // Ensure high z-index
+  
+      // Create a content wrapper div
+      const contentWrapper = document.createElement("div");
+      contentWrapper.className = "modal-content";
+      contentWrapper.style.zIndex = "10000000"; // Even higher z-index
   
       // Add close button
       const closeBtn = document.createElement("span");
       closeBtn.className = "close";
       closeBtn.innerHTML = "&times;";
-      closeBtn.onclick = () => (modal.style.display = "none");
+      closeBtn.style.zIndex = "10000001"; // Highest z-index
+      closeBtn.onclick = (e) => {
+          e.stopPropagation(); // Prevent event bubbling
+          modal.style.display = "none";
+      };
   
-      modal.appendChild(closeBtn);
+      // Append close button to content wrapper
+      contentWrapper.appendChild(closeBtn);
+      
+      // Append content wrapper to modal
+      modal.appendChild(contentWrapper);
   
       // Closing when clicking outside
-      window.onclick = (event) => {
-        if (event.target === modal) {
-          modal.style.display = "none";
-        }
+      modal.onclick = (event) => {
+          if (event.target === modal) {
+              modal.style.display = "none";
+          }
+      };
+  
+      // Prevent clicks inside modal from closing it
+      contentWrapper.onclick = (event) => {
+          event.stopPropagation();
       };
   
       document.body.appendChild(modal);
+      
+      // Add fullscreen change event listener
+      document.addEventListener('fullscreenchange', () => {
+          if (document.fullscreenElement) {
+              modal.style.zIndex = "9999999";
+              contentWrapper.style.zIndex = "10000000";
+              closeBtn.style.zIndex = "10000001";
+          }
+      });
+  
       return modal;
-    }
+  }
   
     function createBackButton() {
       const existing = document.querySelector(".back-button");
