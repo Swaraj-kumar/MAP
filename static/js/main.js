@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "West Bengal",
   ];
 
+  // This stateListContainer will be hidden and only used when triggered from the context menu
   const stateListContainer = document.getElementById("state-list-container");
   stateListContainer.style.maxHeight = "400px";
   stateListContainer.style.overflowY = "scroll";
@@ -42,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   stateListContainer.style.margin = "20px auto";
   stateListContainer.style.width = "300px";
   stateListContainer.style.backgroundColor = "#f9f9f9";
+  stateListContainer.style.display = "none"; // Initially hidden
 
   const stateButtons = [];
   states.forEach((state) => {
@@ -68,6 +70,9 @@ document.addEventListener("DOMContentLoaded", () => {
     stateButtons.push(stateButton);
     stateListContainer.appendChild(stateButton);
   });
+
+
+
 
   function showStateDetails(state, data) {
     const modal = document.getElementById("biomass-modal") || createModal();
@@ -126,10 +131,112 @@ document.addEventListener("DOMContentLoaded", () => {
     modal.style.display = "block";
   }
 
+  // New function to show all states biomass data in a modal
+  function showAllStatesBiomassData() {
+    // Create a modal specifically for the biomass state list
+    const modal = document.createElement("div");
+    modal.id = "biomass-states-modal";
+    modal.className = "modal";
+    modal.style.display = "block";
+    modal.style.zIndex = "9999999";
+    
+    // Create modal content container
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+    modalContent.style.maxWidth = "600px";
+    modalContent.style.padding = "20px";
+    modalContent.style.margin = "50px auto";
+    modalContent.style.backgroundColor = "#fff";
+    modalContent.style.borderRadius = "8px";
+    modalContent.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
+    
+    // Add header and close button
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.marginBottom = "20px";
+    
+    const title = document.createElement("h3");
+    title.textContent = "Biomass Details by State";
+    title.style.margin = "0";
+    
+    const closeBtn = document.createElement("span");
+    closeBtn.innerHTML = "&times;";
+    closeBtn.style.fontSize = "24px";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.style.fontWeight = "bold";
+    closeBtn.onclick = () => modal.style.display = "none";
+    
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    modalContent.appendChild(header);
+    
+    // Create list of state buttons
+    const stateList = document.createElement("div");
+    stateList.style.maxHeight = "500px";
+    stateList.style.overflowY = "auto";
+    
+    states.forEach((state) => {
+      const stateButton = document.createElement("div");
+      stateButton.className = "state-biomass-button";
+      stateButton.style.display = "flex";
+      stateButton.style.justifyContent = "space-between";
+      stateButton.style.alignItems = "center";
+      stateButton.style.padding = "10px";
+      stateButton.style.margin = "5px 0";
+      stateButton.style.borderBottom = "1px solid #eee";
+      
+      const stateName = document.createElement("span");
+      stateName.textContent = state;
+      
+      const viewBtn = document.createElement("button");
+      viewBtn.textContent = "View Details";
+      viewBtn.style.padding = "5px 10px";
+      viewBtn.style.backgroundColor = "#4CAF50";
+      viewBtn.style.color = "white";
+      viewBtn.style.border = "none";
+      viewBtn.style.borderRadius = "4px";
+      viewBtn.style.cursor = "pointer";
+      
+      viewBtn.onclick = () => {
+        // Close the state list modal
+        modal.style.display = "none";
+        
+        // Fetch and display this state's biomass data
+        fetch(`/api/biomass?state=${encodeURIComponent(state)}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert(data.error);
+            } else {
+              showStateDetails(state, data);
+            }
+          })
+          .catch((error) => console.error("Error fetching biomass data:", error));
+      };
+      
+      stateButton.appendChild(stateName);
+      stateButton.appendChild(viewBtn);
+      stateList.appendChild(stateButton);
+    });
+    
+    modalContent.appendChild(stateList);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Close when clicking outside
+    modal.onclick = (event) => {
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  }
+
   function toggleBiomassContainer(show) {
     const stateListContainer = document.getElementById("state-list-container");
     if (stateListContainer) {
-      stateListContainer.style.display = show ? "block" : "none";
+      stateListContainer.style.display = "none"; // Always hide, we'll use the context menu option
     }
   }
 
@@ -221,16 +328,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+// Another trial of context menu for state
+
+  
   function loadIndiaMap() {
     // Add this to loadIndiaMap function
     const bioMassDetailsHeader = document.getElementById("bioMassDetails");
     if (bioMassDetailsHeader) {
-      bioMassDetailsHeader.style.display = "block";
+      bioMassDetailsHeader.style.display = "none"; // Hide the header completely
     }
-    toggleBiomassContainer(true);
+    toggleBiomassContainer(false); // Always hide the container
+    
     fetch("/static/geojson/india.json")
       .then((response) => response.json())
-      .then((data) => createMap(data))
+      .then((data) => {
+        createMap(data);
+        addContextMenuOption();
+      })
       .catch((error) => console.error("Error loading India map:", error));
   }
 
@@ -324,6 +438,15 @@ document.addEventListener("DOMContentLoaded", () => {
     currentChart = Highcharts.mapChart("map-container", {
         chart: {
             map: geoJson,
+            // Add context menu with biomass option
+            events: {
+                contextmenu: function (e) {
+                    // The default options from Highcharts
+                    if (!this.options.chart.contextMenu) {
+                        return;
+                    }
+                }
+            }
         },
         title: {
             text: "India Map",
@@ -346,6 +469,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     const plants = plantData[state] || [];
                     return `<b>${state}</b><br>Number of Plants: ${plants.length}`;
+                }
+            }
+        },
+        // Add custom Biomass Details option to the exporting menu
+        exporting: {
+            buttons: {
+                contextButton: {
+                    menuItems: ["viewFullscreen", "printChart", "separator", 
+                        {
+                            text: 'Biomass Details of State',
+                            onclick: function() {
+                                showAllStatesBiomassData();
+                            }
+                        }
+                    ]
                 }
             }
         },
@@ -563,6 +701,7 @@ function createStateMap(stateData, plants, stateName) {
       }
       return centroid;
   };
+
 
   currentChart = Highcharts.mapChart("map-container", {
       chart: {
